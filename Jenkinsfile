@@ -12,7 +12,7 @@ pipeline {
   stages {
     stage('Checkout') {
       steps {
-        git url: 'https://github.com/username/fe-crud-app.git', branch: 'main'
+        git url: 'https://github.com/Deni4h/FE-CRUD-APP.git', branch: 'main'
       }
     }
 
