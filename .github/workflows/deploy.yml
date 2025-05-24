@@ -1,0 +1,74 @@
+name: CI/CD Blue-Green Deployment
+
+on:
+  push:
+    branches:
+      - main  # Ganti sesuai branch kamu
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Install Dependencies & Build
+      run: |
+        npm install
+        npm run build  # pastikan hasil build ke folder dist
+
+    - name: Deploy to Server (Blue-Green)
+      uses: appleboy/ssh-action@v0.1.6
+      with:
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USERNAME }}
+        key: ${{ secrets.PRIVATE_KEY }}
+        script: |
+          # Setup variabel
+          GREEN_DIR="/home/deni/fe-deni-crud-app/green"
+          BLUE_DIR="/home/deni/fe-deni-crud-app/blue"
+          CURRENT_LINK="/home/deni/fe-deni-crud-app/current"
+          BUILD_DIR="/home/deni/build_temp"
+
+          # Hapus build lama (jika ada)
+          rm -rf $BUILD_DIR
+          mkdir -p $BUILD_DIR
+
+          # Pindahkan build dari GitHub runner
+          exit
+
+    - name: Upload build files to server
+      uses: appleboy/scp-action@v0.1.4
+      with:
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USERNAME }}
+        key: ${{ secrets.PRIVATE_KEY }}
+        source: "dist/*"
+        target: "/home/deni/build_temp"
+
+    - name: Switch Blue-Green and Restart PM2
+      uses: appleboy/ssh-action@v0.1.6
+      with:
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USERNAME }}
+        key: ${{ secrets.PRIVATE_KEY }}
+        script: |
+          GREEN_DIR="/home/deni/fe-deni-crud-app/green"
+          BLUE_DIR="/home/deni/fe-deni-crud-app/blue"
+          CURRENT_LINK="/home/deni/fe-deni-crud-app/current"
+          BUILD_DIR="/home/deni/build_temp"
+
+          # Clean green and deploy build
+          rm -rf $GREEN_DIR/*
+          mv $BUILD_DIR/* $GREEN_DIR/
+
+          # Point symlink to green
+          ln -sfn $GREEN_DIR $CURRENT_LINK
+
+          # Restart PM2
+          pm2 delete frontend || true
+          pm2 start /home/deni/fe-deni-crud-app/current/index.js --name frontend
+
+          # Clean temp
+          rm -rf $BUILD_DIR
