@@ -6,22 +6,22 @@ pipeline {
   }
 
   environment {
-    VERSION = "${params.GIT_TAG}"
-    DOCKER_USER = "denidkr24"  // Ganti sesuai akun Docker Hub kamu
+    DOCKER_USER = "denidkr24"         // Ganti dengan Docker Hub kamu
+    IMAGE_NAME = "frontend"
+    REPO_URL = "git@github.com:Deni4h/FE-CRUD-APP.git"  // Ganti dengan repo kamu
+    DOCKER_COMPOSE_DIR = "/home/deni"
   }
 
   stages {
-    stage('Checkout') {
+    stage('Checkout FE Repo') {
       steps {
-        git branch: "${params.GIT_TAG}", url: 'https://github.com/username/repo-frontend.git'
+        git branch: "${params.GIT_TAG}", url: "${REPO_URL}"
       }
     }
 
     stage('Build Docker Image') {
       steps {
-        sh """
-          docker build -t $DOCKER_USER/frontend:${VERSION} ./FE-CRUD-APP
-        """
+        sh "docker build -t $DOCKER_USER/$IMAGE_NAME:${params.GIT_TAG} ."
       }
     }
 
@@ -33,23 +33,20 @@ pipeline {
       }
     }
 
-    stage('Push Docker Image') {
+    stage('Push Image') {
       steps {
-        sh "docker push $DOCKER_USER/frontend:${VERSION}"
+        sh "docker push $DOCKER_USER/$IMAGE_NAME:${params.GIT_TAG}"
       }
     }
 
     stage('Deploy Frontend') {
       steps {
-        script {
-          // Buat file .env untuk versi docker-compose
-          writeFile file: '.env', text: "VERSION=${VERSION}"
-
-          sh """
-            docker-compose pull frontend
-            docker-compose up -d frontend
-          """
-        }
+        sh """
+          echo "VERSION=${params.GIT_TAG}" | sudo tee $DOCKER_COMPOSE_DIR/.env > /dev/null
+          cd $DOCKER_COMPOSE_DIR
+          docker-compose pull frontend
+          docker-compose up -d frontend
+        """
       }
     }
   }
