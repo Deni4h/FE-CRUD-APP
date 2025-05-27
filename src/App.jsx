@@ -7,7 +7,7 @@ function App() {
   const [editId, setEditId] = useState(null);
 
   const fetchItems = async () => {
-    const res = await axios.get("http://localhost:5000/api/items");
+    const res = await axios.get("/api/items");
     setItems(res.data);
   };
 
@@ -18,9 +18,9 @@ function App() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (editId === null) {
-      await axios.post("http://localhost:5000/api/items", form);
+      await axios.post("/api/items", form);
     } else {
-      await axios.put(`http://localhost:5000/api/items/${editId}`, form);
+      await axios.put(`/api/items/${editId}`, form);
       setEditId(null);
     }
     setForm({ name: "", description: "" });
@@ -33,7 +33,7 @@ function App() {
   };
 
   const handleDelete = async (id) => {
-    await axios.delete(`http://localhost:5000/api/items/${id}`);
+    await axios.delete(`/api/items/${id}`);
     fetchItems();
   };
 
