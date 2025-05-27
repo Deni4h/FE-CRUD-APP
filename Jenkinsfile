@@ -13,7 +13,7 @@ pipeline {
   stages {
     stage('Checkout') {
       steps {
-        git branch: "${params.GIT_TAG}", url: 'https://github.com/username/repo-frontend.git'
+        git branch: "${params.GIT_TAG}", url: 'git@github.com:Deni4h/FE-CRUD-APP.git'
       }
     }
 
