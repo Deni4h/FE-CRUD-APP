@@ -1,53 +1,56 @@
 pipeline {
-  agent any
+    agent { label 'jenkins-agent-dev' }
 
-  parameters {
-    string(name: 'GIT_TAG', defaultValue: 'v1.0.0', description: 'Tag Git yang akan dibuild')
-  }
-
-  environment {
-    DOCKER_USER = "denidkr24"         // Ganti dengan Docker Hub kamu
-    IMAGE_NAME = "frontend"
-    REPO_URL = "git@github.com:Deni4h/FE-CRUD-APP.git"  // Ganti dengan repo kamu
-    DOCKER_COMPOSE_DIR = "/home/deni"
-  }
-
-  stages {
-    stage('Checkout FE Repo') {
-      steps {
-        git branch: "${params.GIT_TAG}", url: "${REPO_URL}"
-      }
+    environment {
+        REGISTRY = "docker.io"
+        DOCKERHUB_USERNAME = "denidkr24"
+        REPO_NAME = "fe-crud-app"
+        IMAGE_TAG = "frontend-${new Date().format('yyyyMMdd-HHmmss')}"
+        FULL_IMAGE = "${REGISTRY}/${DOCKERHUB_USERNAME}/${REPO_NAME}:${IMAGE_TAG}"
     }
 
-    stage('Build Docker Image') {
-      steps {
-        sh "docker build -t $DOCKER_USER/$IMAGE_NAME:${params.GIT_TAG} ."
-      }
-    }
-
-    stage('Login Docker Hub') {
-      steps {
-        withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
-          sh 'echo $PASSWORD | docker login -u $USERNAME --password-stdin'
+    stages {
+        stage('Checkout') {
+            steps {
+                git url: 'git@github.com:Deni4h/FE-CRUD-APP.git', branch: 'main'
+            }
         }
-      }
-    }
 
-    stage('Push Image') {
-      steps {
-        sh "docker push $DOCKER_USER/$IMAGE_NAME:${params.GIT_TAG}"
-      }
-    }
+        stage('Build Docker Image') {
+            steps {
+                dir('FE-CRUD-APP') {
+                    sh "docker build -t ${FULL_IMAGE} ."
+                }
+            }
+        }
 
-    stage('Deploy Frontend') {
-      steps {
-        sh """
-          echo "VERSION=${params.GIT_TAG}" | sudo tee $DOCKER_COMPOSE_DIR/.env > /dev/null
-          cd $DOCKER_COMPOSE_DIR
-          docker-compose pull frontend
-          docker-compose up -d frontend
-        """
-      }
+        stage('Push to Docker Hub') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
+                    sh 'echo $PASSWORD | docker login -u $USERNAME --password-stdin'
+                    sh "docker push ${FULL_IMAGE}"
+                }
+            }
+        }
+
+        stage('Update docker-compose.yml') {
+            steps {
+                script {
+                    def composeFile = readFile 'docker-compose.yml'
+                    def updated = composeFile.replaceAll(
+                        /image:\s*${REGISTRY}\/${DOCKERHUB_USERNAME}\/${REPO_NAME}:[^\n]+/,
+                        "image: ${FULL_IMAGE}"
+                    )
+                    writeFile file: 'docker-compose.yml', text: updated
+                }
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                sh 'docker-compose pull frontend'
+                sh 'docker-compose up -d frontend'
+            }
+        }
     }
-  }
 }
