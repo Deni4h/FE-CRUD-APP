@@ -18,7 +18,7 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                dir('FE-CRUD-APP') {
+                dir('/FE-CRUD-APP') {
                     sh "docker build -t ${FULL_IMAGE} ."
                 }
             }
