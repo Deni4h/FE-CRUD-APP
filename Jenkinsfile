@@ -36,12 +36,14 @@ pipeline {
         stage('Update docker-compose.yml') {
             steps {
                 script {
+                  """
                     def composeFile = readFile 'docker-compose.yml'
                     def updated = composeFile.replaceAll(
                         /image:\s*${REGISTRY}\/${DOCKERHUB_USERNAME}\/${REPO_NAME}:[^\n]+/,
                         "image: ${FULL_IMAGE}"
                     )
                     writeFile file: 'docker-compose.yml', text: updated
+                  """
                 }
             }
         }
